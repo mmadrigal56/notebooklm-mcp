@@ -1,0 +1,31 @@
+{
+  "name": "notebooklm",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "login": "tsx src/auth/login.ts",
+    "explore": "tsx src/explore.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mmadrigal56/notebooklm-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mmadrigal56/notebooklm-mcp/issues"
+  },
+  "homepage": "https://github.com/mmadrigal56/notebooklm-mcp#readme",
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.5",
+    "typescript": "^7.0.2"
+  }
+}
