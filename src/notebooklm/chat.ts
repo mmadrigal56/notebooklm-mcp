@@ -1,6 +1,6 @@
 
 import type { Page } from "playwright";
-
+import { limpiarRespuesta } from "./formatter.js";
 
 
 export async function enviarPregunta(
@@ -164,7 +164,20 @@ export async function obtenerRespuesta(
       Date.now() - estableDesde >= 5000
     ) {
       console.log("Respuesta completa detectada.");
-      return textoActual.trim();
+      
+      const textoLimpio = await limpiarRespuesta(respuesta);
+      
+      if (!textoLimpio) {
+        throw new Error(
+            "NotebookLM terminó, pero no se pudo extraer la respuesta."
+        );
+      }
+
+    console.log(
+    `Respuesta limpia: ${textoLimpio.length} caracteres`
+    );
+
+    return textoLimpio;
     }
 
     await page.waitForTimeout(2000);
