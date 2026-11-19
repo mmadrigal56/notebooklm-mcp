@@ -1,5 +1,5 @@
-
 import { chromium } from "playwright";
+import { enviarPregunta } from "./notebooklm/chat.js";
 
 const NOTEBOOK_URL =
   "https://notebook.google.com/notebook/3d0f8b0a-e2dc-464d-9947-248d08b519b0";
@@ -15,20 +15,27 @@ async function main() {
   try {
     const page = context.pages()[0] ?? await context.newPage();
 
-    console.log("Abriendo cuaderno de NotebookLM...");
+    console.log("Abriendo cuaderno...");
 
     await page.goto(NOTEBOOK_URL, {
       waitUntil: "domcontentloaded",
     });
 
-    await page.waitForLoadState("domcontentloaded");
+    console.log("Cuaderno abierto.");
 
-    console.log("Página cargada:", await page.title());
-    console.log("URL actual:", page.url());
+    await enviarPregunta(
+      page,
+      "PRUEBA MCP: ¿Cuáles son los principales riesgos de un proyecto?"
+    );
 
-    console.log("Navegador abierto para verificar el cuaderno.");
+    console.log("Esperando para revisar la respuesta...");
 
-    await page.waitForTimeout(300000);
+    console.log("Navegador abierto. Presioná ENTER en PowerShell para cerrarlo.");
+
+    await new Promise<void>((resolve) => {
+      process.stdin.resume();
+      process.stdin.once("data", () => resolve());
+    });
   } finally {
     await context.close();
   }
