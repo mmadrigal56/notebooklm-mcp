@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { enviarPregunta } from "./notebooklm/chat.js";
+import { enviarPregunta, obtenerRespuesta } from "./notebooklm/chat.js";
 
 const NOTEBOOK_URL =
   "https://notebook.google.com/notebook/3d0f8b0a-e2dc-464d-9947-248d08b519b0";
@@ -23,10 +23,16 @@ async function main() {
 
     console.log("Cuaderno abierto.");
 
-    await enviarPregunta(
-      page,
-      "PRUEBA MCP: ¿Cuáles son los principales riesgos de un proyecto?"
-    );
+    const pregunta =
+      "PRUEBA MCP 2026 NUMERO 2: ¿Cuál es la diferencia entre velocidad y capacidad en Scrum?";
+
+    await enviarPregunta(page, pregunta);
+
+    const respuesta = await obtenerRespuesta(page, pregunta);
+
+    console.log("\n========== RESPUESTA ==========\n");
+    console.log(respuesta);
+    console.log("\n===============================\n");
 
     console.log("Esperando para revisar la respuesta...");
 
