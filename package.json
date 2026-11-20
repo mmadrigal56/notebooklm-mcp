@@ -6,8 +6,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "explore": "tsx src/explore.ts",
+    "mcp": "tsx src/mcp/server.ts",
     "login": "tsx src/auth/login.ts",
-    "explore": "tsx src/explore.ts"
+    "check": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

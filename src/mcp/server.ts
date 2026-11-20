@@ -3,8 +3,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
 import { chromium } from "playwright";
 import { enviarPregunta, obtenerRespuesta } from "../notebooklm/chat.js";
-import "dotenv/config";
 import { listarCuadernos } from "../notebooklm/notebooks.js";
+import { ENV_PATH, PROFILE_PATH } from "../config/paths.js";
+import { config } from "dotenv";
+
+config({ path: ENV_PATH });
 
 const server = new McpServer({
   name: "notebooklm-mcp",
@@ -33,7 +36,7 @@ async ({ pregunta, notebookId}) => {
   console.error("Pregunta MCP recibida.");
 
   const context = await chromium.launchPersistentContext(
-    "playwright/profile",
+    PROFILE_PATH,
     {
       headless: false,
     }
@@ -108,8 +111,8 @@ server.registerTool(
   },
   async () => {
     const context = await chromium.launchPersistentContext(
-      "playwright/profile",
-      { headless: false }
+        PROFILE_PATH,
+        { headless: false }
     );
 
     try {

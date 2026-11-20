@@ -1,30 +1,35 @@
 import { chromium } from "playwright";
+import { PROFILE_PATH } from "../config/paths.js";
 
 async function login() {
   const context = await chromium.launchPersistentContext(
-    "playwright/profile",
+    PROFILE_PATH,
     {
       headless: false,
     }
   );
 
-  const page = await context.newPage();
+  try {
+    const page = await context.newPage();
 
-  await page.goto("https://notebooklm.google.com");
+    await page.goto("https://notebook.google.com/");
 
-  console.log("");
-  console.log("Inicia sesión en Google.");
-  console.log("Cuando ya estés dentro de NotebookLM, presiona ENTER.");
+    console.log("");
+    console.log("Inicia sesión en Google si es necesario.");
+    console.log(
+      "Cuando estés dentro de NotebookLM, presioná ENTER."
+    );
 
-  process.stdin.resume();
+    process.stdin.resume();
 
-  await new Promise<void>((resolve) => {
-    process.stdin.once("data", () => resolve());
-  });
+    await new Promise<void>((resolve) => {
+      process.stdin.once("data", () => resolve());
+    });
 
-  console.log("Perfil guardado.");
-
-  await context.close();
+    console.log("Perfil guardado.");
+  } finally {
+    await context.close();
+  }
 }
 
 login().catch(console.error);
