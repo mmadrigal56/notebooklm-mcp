@@ -91,7 +91,44 @@ Comprobar que `.env` contiene:
 NOTEBOOKLM_CONNECTION=cdp
 NOTEBOOKLM_BROWSER=msedge
 NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
+NOTEBOOKLM_CDP_WINDOW=headless
 ```
+
+### Consultas sin ventana
+
+Al copiar `.env.example` como `.env`, las consultas quedan configuradas
+para ejecutarse sin abrir una ventana de Edge.
+
+| Valor de `NOTEBOOKLM_CDP_WINDOW` | Comportamiento |
+|---|---|
+| `headless` | Ejecuta Edge sin ventana. Configuración recomendada. |
+| `hidden` | Abre una ventana y luego la oculta. |
+| `visible` | Mantiene la ventana visible para revisar el funcionamiento. |
+
+Esta configuración se aplica a Microsoft Edge mediante CDP.
+La alternativa Chromium mediante Playwright utiliza una ventana visible.
+
+El comando `npm.cmd run login` abre Edge de forma visible para permitir
+el inicio de sesión. Cuando NotebookLM muestre los cuadernos, regresar
+a la terminal y presionar Enter. Al finalizar, Edge vuelve al modo
+configurado en `.env`.
+
+### Aplicar cambios de configuración
+
+Si se modifica `.env` mientras el servidor MCP está funcionando,
+reiniciar la conexión para que lea los cambios:
+
+- En Codex CLI: salir de la sesión y volver a ejecutar `codex.cmd`.
+- En la aplicación de Codex: cerrarla completamente y volver a abrirla.
+
+Después, solicitar `listar_cuadernos` para comprobar la conexión.
+
+No es necesario borrar el chat, eliminar el proyecto ni reinstalar
+las dependencias.
+
+Si ya existe un archivo `.env`, agregar o actualizar
+`NOTEBOOKLM_CDP_WINDOW=headless` conservando las demás variables.
+Actualizar el repositorio no modifica automáticamente el `.env` local.
 
 El servidor utiliza por defecto un perfil independiente ubicado en:
 
@@ -316,7 +353,7 @@ Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar 
 ## Limitaciones actuales
 
 - Depende de la interfaz web de NotebookLM; cambios en sus elementos HTML pueden requerir ajustes en los selectores.
-- La automatización requiere un navegador con interfaz gráfica. Las opciones documentadas son Microsoft Edge mediante CDP y Chromium mediante Playwright. El inicio de sesión con Chromium puede ser bloqueado por Google.
+- El inicio de sesión requiere una ventana visible. Las consultas con Microsoft Edge mediante CDP pueden ejecutarse sin ventana usando `NOTEBOOKLM_CDP_WINDOW=headless`. La alternativa Chromium mediante Playwright utiliza una ventana visible y Google puede bloquear su inicio de sesión.
 - Las operaciones deben ejecutarse secuencialmente cuando comparten el mismo perfil del navegador.
 - El listado depende de los cuadernos cargados en la página principal.
 - La compatibilidad con diferentes clientes MCP aún requiere pruebas individuales.
