@@ -4,7 +4,7 @@ import { z } from "zod";
 import { enviarPregunta, obtenerRespuesta } from "../notebooklm/chat.js";
 import { listarCuadernos } from "../notebooklm/notebooks.js";
 import { ENV_PATH } from "../config/paths.js";
-import { abrirNavegador } from "../notebooklm/browser.js";
+import { conectarNotebookLM } from "../notebooklm/browser.js";
 import { config } from "dotenv";
 
 config({ path: ENV_PATH });
@@ -35,10 +35,11 @@ server.registerTool(
 async ({ pregunta, notebookId}) => {
   console.error("Pregunta MCP recibida.");
 
-  const context = await abrirNavegador();
+  const { context, cerrar } = await conectarNotebookLM();
+  let page: Awaited<ReturnType<typeof context.newPage>> | undefined;
 
   try {
-    const page = await context.newPage();
+    page = await context.newPage();
 
     const notebookUrl = notebookId
         ? `https://notebook.google.com/notebook/${notebookId}`
@@ -92,7 +93,13 @@ async ({ pregunta, notebookId}) => {
       ],
     };
   } finally {
-    await context.close();
+      try {
+        if (page && !page.isClosed()) {
+          await page.close();
+        }
+      } finally {
+        await cerrar();
+      }
   }
 }
 );
@@ -105,10 +112,11 @@ server.registerTool(
     inputSchema: z.object({}),
   },
   async () => {
-    const context = await abrirNavegador();
+    const { context, cerrar } = await conectarNotebookLM();
+    let page: Awaited<ReturnType<typeof context.newPage>> | undefined;
 
     try {
-      const page = await context.newPage();
+      page = await context.newPage();
       const cuadernos = await listarCuadernos(page);
 
       return {
@@ -135,7 +143,13 @@ server.registerTool(
         ],
       };
     } finally {
-      await context.close();
+        try {
+          if (page && !page.isClosed()) {
+            await page.close();
+          }
+        } finally {
+          await cerrar();
+        }
     }
   }
 );

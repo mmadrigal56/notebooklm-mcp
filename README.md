@@ -2,7 +2,9 @@
 
 Servidor MCP (*Model Context Protocol*) que permite conectar asistentes de IA compatibles con servidores MCP locales a Google NotebookLM.
 
-Utiliza **Playwright** para interactuar con NotebookLM desde un navegador Chromium y permite consultar los cuadernos disponibles en la cuenta de Google del usuario.
+Utiliza **Playwright** para interactuar con NotebookLM mediante un navegador web. Permite iniciar un navegador con un perfil persistente o conectarse a una sesión existente de Microsoft Edge mediante **Chrome DevTools Protocol (CDP)**.
+
+El servidor permite listar los cuadernos disponibles en una cuenta de Google y realizar consultas basadas en sus fuentes.
 
 ## Características
 
@@ -57,6 +59,65 @@ Se abrirá Chromium.
 La sesión se conservará localmente en `playwright/profile/`.
 
 **Seguridad:** no compartir ni publicar esta carpeta, ya que contiene información de la sesión del navegador.
+
+### Alternativa: conectar mediante CDP (Microsoft Edge)
+
+Algunas cuentas de Google pueden rechazar el inicio de sesión desde navegadores controlados directamente por Playwright.
+
+Como alternativa, el proyecto permite iniciar sesión normalmente en Microsoft Edge y conectar posteriormente el servidor MCP mediante Chrome DevTools Protocol (CDP).
+
+**Esta modalidad se ha probado correctamente en Windows con Microsoft Edge y MCP Inspector.**
+
+**1. Crear un perfil independiente de Edge**
+
+Cerrar las ventanas de Edge y ejecutar en PowerShell:
+
+```powershell
+& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge-test" "https://notebook.google.com/"
+```
+
+Iniciar sesión normalmente en Google y comprobar que NotebookLM muestra los cuadernos de la cuenta.
+
+Cerrar Edge después de completar el inicio de sesión.
+
+**2. Abrir Edge con depuración local habilitada**
+
+```powershell
+& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge-test" --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "https://notebook.google.com/"
+```
+
+Mantener Edge abierto mientras se utiliza el servidor MCP.
+
+**3. Configurar `.env`**
+
+```dotenv
+NOTEBOOKLM_CONNECTION=cdp
+NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
+```
+
+**4. Verificar la conexión**
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:9222/json/version
+```
+
+Si la conexión está disponible, el comando mostrará información del navegador y del protocolo de depuración.
+
+**5. Utilizar el MCP**
+
+Iniciar el servidor desde un cliente compatible, como MCP Inspector o Codex CLI.
+
+Las herramientas `listar_cuadernos` y `preguntar_notebooklm` utilizarán la sesión de Edge previamente autenticada.
+
+**Consideraciones de seguridad:**
+
+- Utilizar un perfil independiente para NotebookLM.
+- Mantener el puerto de depuración accesible únicamente desde el equipo local.
+- No exponer el puerto 9222 a Internet ni a otras computadoras.
+- No compartir el perfil, las cookies ni las direcciones de conexión WebSocket.
+- Cerrar Edge al terminar de utilizar el MCP.
+
+La depuración remota concede acceso amplio a la sesión del navegador. Esta modalidad está pensada para uso local en un equipo de confianza.
 
 ### 4. Configurar un cuaderno predeterminado (opcional)
 
@@ -184,10 +245,11 @@ Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar 
 ## Limitaciones actuales
 
 - Depende de la interfaz web de NotebookLM; cambios en sus elementos HTML pueden requerir ajustes en los selectores.
-- La automatización utiliza Chromium con interfaz gráfica.
+- La automatización requiere un navegador con interfaz gráfica. El modo persistente admite Chromium, Firefox, Chrome y Edge; el modo CDP se ha probado con Microsoft Edge.
 - Las operaciones deben ejecutarse secuencialmente cuando comparten el mismo perfil del navegador.
 - El listado depende de los cuadernos cargados en la página principal.
 - La compatibilidad con diferentes clientes MCP aún requiere pruebas individuales.
+- El modo CDP requiere que Edge permanezca abierto con la depuración local habilitada. El servidor MCP no inicia automáticamente ese navegador.
 
 ## Tecnologías
 
@@ -200,4 +262,6 @@ Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar 
 
 ## Estado del proyecto
 
-En desarrollo. Las herramientas listar_cuadernos y preguntar_notebooklm se han probado correctamente mediante MCP Inspector y Codex CLI en Windows.
+En desarrollo. Las herramientas `listar_cuadernos` y `preguntar_notebooklm` se han probado correctamente mediante MCP Inspector y Codex CLI en Windows.
+
+También se ha verificado el funcionamiento de ambas herramientas desde MCP Inspector utilizando Microsoft Edge mediante CDP y una sesión de Google iniciada previamente por el usuario.
