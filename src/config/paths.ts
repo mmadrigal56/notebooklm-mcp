@@ -11,4 +11,12 @@ export const PROFILE_PATH = path.join(
   "profile"
 );
 
+export function obtenerRutaPerfil(navegador: string): string {
+  if (navegador === "chromium") {
+    return PROFILE_PATH;
+  }
+
+  return path.join(PROJECT_ROOT, "playwright", `profile-${navegador}`);
+}
+
 export const ENV_PATH = path.join(PROJECT_ROOT, ".env");

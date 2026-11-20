@@ -1,10 +1,10 @@
 ﻿import { McpServer } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
-import { chromium } from "playwright";
 import { enviarPregunta, obtenerRespuesta } from "../notebooklm/chat.js";
 import { listarCuadernos } from "../notebooklm/notebooks.js";
-import { ENV_PATH, PROFILE_PATH } from "../config/paths.js";
+import { ENV_PATH } from "../config/paths.js";
+import { abrirNavegador } from "../notebooklm/browser.js";
 import { config } from "dotenv";
 
 config({ path: ENV_PATH });
@@ -35,12 +35,7 @@ server.registerTool(
 async ({ pregunta, notebookId}) => {
   console.error("Pregunta MCP recibida.");
 
-  const context = await chromium.launchPersistentContext(
-    PROFILE_PATH,
-    {
-      headless: false,
-    }
-  );
+  const context = await abrirNavegador();
 
   try {
     const page = await context.newPage();
@@ -110,10 +105,7 @@ server.registerTool(
     inputSchema: z.object({}),
   },
   async () => {
-    const context = await chromium.launchPersistentContext(
-        PROFILE_PATH,
-        { headless: false }
-    );
+    const context = await abrirNavegador();
 
     try {
       const page = await context.newPage();

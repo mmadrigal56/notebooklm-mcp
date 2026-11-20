@@ -1,24 +1,21 @@
-import { chromium } from "playwright";
-import { PROFILE_PATH } from "../config/paths.js";
+
+import { config } from "dotenv";
+import { ENV_PATH } from "../config/paths.js";
+import { abrirNavegador } from "../notebooklm/browser.js";
+
+config({ path: ENV_PATH });
 
 async function login() {
-  const context = await chromium.launchPersistentContext(
-    PROFILE_PATH,
-    {
-      headless: false,
-    }
-  );
+  const context = await abrirNavegador();
 
   try {
-    const page = await context.newPage();
+    const page = context.pages()[0] ?? await context.newPage();
 
     await page.goto("https://notebook.google.com/");
 
     console.log("");
-    console.log("Inicia sesión en Google si es necesario.");
-    console.log(
-      "Cuando estés dentro de NotebookLM, presioná ENTER."
-    );
+    console.log("Iniciá sesión en Google si es necesario.");
+    console.log("Cuando estés dentro de NotebookLM, presioná ENTER.");
 
     process.stdin.resume();
 
@@ -32,4 +29,7 @@ async function login() {
   }
 }
 
-login().catch(console.error);
+login().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
