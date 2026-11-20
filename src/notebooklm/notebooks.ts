@@ -13,19 +13,6 @@ export async function listarCuadernos(
   await page.goto("https://notebook.google.com/");
 
   await page.getByRole("button", {
-    name: /^Notebook sections,/,
-  }).click();
-
-  await page.getByRole("menu")
-    .getByText("Todos", { exact: true })
-    .click();
-
-  await page.getByRole("button", {
-    name: "Notebook sections, Todos",
-    exact: true,
-  }).waitFor({ state: "visible", timeout: 15000 });
-
-  await page.getByRole("button", {
     name: "Vista de cuadrícula",
     exact: true,
   }).click();
@@ -35,6 +22,26 @@ export async function listarCuadernos(
     state: "visible",
     timeout: 30000,
   });
+
+    // Ampliar el área visible y desplazar para comprobar la carga.
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(2000);
+
+  console.error("Diagnóstico de tarjetas:", JSON.stringify(
+    await page.locator(".project-button-card").evaluateAll(
+      tarjetas => tarjetas.map(tarjeta => ({
+        titulo: tarjeta.querySelector(".project-button-title")
+          ?.textContent?.trim(),
+        href: tarjeta.querySelector("a")?.getAttribute("href"),
+        destacada: Boolean(
+          tarjeta.closest(".featured-projects-container")
+        ),
+      }))
+    ),
+    null,
+    2
+  ));
 
   const cuadernos = await page
     .locator(".project-button-card:not(.featured-projects-container *)")
