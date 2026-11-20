@@ -11,7 +11,7 @@ export async function enviarPregunta(
     name: "Cuadro de consulta",
   });
 
-  console.log("Esperando cuadro de consulta...");
+  console.error("Esperando cuadro de consulta...");
 
   await cuadroConsulta.waitFor({
     state: "visible",
@@ -32,13 +32,13 @@ export async function enviarPregunta(
     );
   }
 
-  console.log("Escribiendo pregunta nueva...");
+  console.error("Escribiendo pregunta nueva...");
 
   await cuadroConsulta.fill(pregunta);
 
   const textoEscrito = await cuadroConsulta.inputValue();
 
-  console.log("Texto escrito:", textoEscrito);
+  console.error("Texto escrito:", textoEscrito);
 
   if (textoEscrito !== pregunta) {
     throw new Error(
@@ -50,7 +50,7 @@ export async function enviarPregunta(
     "nb-icon-button.submit-button button[aria-label='Enviar']"
   );
 
-  console.log("Enviando pregunta...");
+  console.error("Enviando pregunta...");
 
   await botonEnviar.click({
     timeout: 15000,
@@ -61,7 +61,7 @@ export async function enviarPregunta(
 
   const textoRestante = await cuadroConsulta.inputValue();
 
-  console.log("Texto restante:", textoRestante);
+  console.error("Texto restante:", textoRestante);
 
   if (textoRestante.trim() !== "") {
     throw new Error(
@@ -85,7 +85,7 @@ export async function enviarPregunta(
     timeout: 30000,
   });
 
-  console.log("Pregunta nueva confirmada en el historial.");
+  console.error("Pregunta nueva confirmada en el historial.");
 }
 
 
@@ -93,7 +93,7 @@ export async function obtenerRespuesta(
   page: Page,
   pregunta: string
 ): Promise<string> {
-  console.log("Esperando respuesta de NotebookLM...");
+  console.error("Esperando respuesta de NotebookLM...");
 
   const par = page.locator(".chat-message-pair").filter({
     has: page.locator(".from-user-container").getByText(
@@ -107,7 +107,7 @@ export async function obtenerRespuesta(
     timeout: 30000,
   });
 
-  console.log("Pregunta encontrada en el historial.");
+  console.error("Pregunta encontrada en el historial.");
 
   const respuesta = par.locator(
     ".to-user-container .message-text-content"
@@ -129,7 +129,7 @@ export async function obtenerRespuesta(
     if (generando) {
       generacionObservada = true;
       estableDesde = Date.now();
-      console.log("NotebookLM sigue generando...");
+      console.error("NotebookLM sigue generando...");
     }
 
     const textoActual = await respuesta
@@ -140,7 +140,7 @@ export async function obtenerRespuesta(
       textoAnterior = textoActual;
       estableDesde = Date.now();
 
-      console.log(
+      console.error(
         `Texto detectado: ${textoActual.length} caracteres`
       );
     }
@@ -163,7 +163,7 @@ export async function obtenerRespuesta(
       !esTemporal &&
       Date.now() - estableDesde >= 5000
     ) {
-      console.log("Respuesta completa detectada.");
+      console.error("Respuesta completa detectada.");
       
       const textoLimpio = await limpiarRespuesta(respuesta);
       
@@ -173,7 +173,7 @@ export async function obtenerRespuesta(
         );
       }
 
-    console.log(
+    console.error(
     `Respuesta limpia: ${textoLimpio.length} caracteres`
     );
 

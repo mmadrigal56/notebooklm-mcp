@@ -24,7 +24,7 @@ async function main() {
     console.log("Cuaderno abierto.");
 
     const pregunta =
-      "PRUEBA MCP 2026 NUMERO 2: ¿Cuál es la diferencia entre velocidad y capacidad en Scrum?";
+      "PRUEBA MCP 2026 NUMERO 3: ¿Qué es Planning Poker y cómo se utiliza en Scrum?";
 
     await enviarPregunta(page, pregunta);
 

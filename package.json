@@ -13,8 +13,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
     "cheerio": "^1.2.0",
-    "playwright": "^1.62.1"
+    "playwright": "^1.62.1",
+    "zod": "^4.6.7"
   },
   "repository": {
     "type": "git",
