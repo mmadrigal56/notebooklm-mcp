@@ -7,6 +7,8 @@ import {
 
 import { obtenerRutaPerfil } from "../config/paths.js";
 
+import { asegurarEdgeCDP } from "./edge-cdp.js";
+
 type Navegador = "chromium" | "firefox" | "chrome" | "msedge";
 
 type ConexionNotebookLM = {
@@ -79,6 +81,8 @@ export async function conectarNotebookLM(): Promise<ConexionNotebookLM> {
         "NOTEBOOKLM_CDP_URL debe utilizar http://127.0.0.1."
       );
     }
+
+    await asegurarEdgeCDP(endpoint);
 
     const browser = await chromium.connectOverCDP(
       endpoint

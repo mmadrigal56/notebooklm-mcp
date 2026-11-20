@@ -11,6 +11,13 @@ export const PROFILE_PATH = path.join(
   "profile"
 );
 
+export const CDP_PROFILE_PATH = path.join(
+  PROJECT_ROOT,
+  "playwright",
+  "profile-cdp"
+);
+
+
 export function obtenerRutaPerfil(navegador: string): string {
   if (navegador === "chromium") {
     return PROFILE_PATH;

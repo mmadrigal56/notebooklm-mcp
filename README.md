@@ -44,7 +44,11 @@ npx playwright install chromium
 
 En Windows PowerShell, si los comandos anteriores presentan restricciones de ejecución, se pueden utilizar `npm.cmd` y `npx.cmd`.
 
-### 3. Iniciar sesión en Google
+### 3. Iniciar sesión con Chromium (modo persistent)
+
+Este método utiliza Chromium mediante Playwright y un perfil persistente.
+
+**Importante:** durante las pruebas, Google rechazó el inicio de sesión desde Chromium controlado por Playwright. Por eso, en Windows se recomienda utilizar Microsoft Edge mediante CDP, como se explica en la siguiente sección.
 
 ```bash
 npm run login
@@ -60,64 +64,97 @@ La sesión se conservará localmente en `playwright/profile/`.
 
 **Seguridad:** no compartir ni publicar esta carpeta, ya que contiene información de la sesión del navegador.
 
-### Alternativa: conectar mediante CDP (Microsoft Edge)
+
+### Alternativa: conexión automática mediante CDP (Microsoft Edge)
 
 Algunas cuentas de Google pueden rechazar el inicio de sesión desde navegadores controlados directamente por Playwright.
 
-Como alternativa, el proyecto permite iniciar sesión normalmente en Microsoft Edge y conectar posteriormente el servidor MCP mediante Chrome DevTools Protocol (CDP).
+Como alternativa, el proyecto permite iniciar sesión normalmente en Microsoft Edge y conectarse mediante Chrome DevTools Protocol (CDP).
 
 **Esta modalidad se ha probado correctamente en Windows con Microsoft Edge y MCP Inspector.**
 
-**1. Crear un perfil independiente de Edge**
+#### 1. Configurar `.env`
 
-Cerrar las ventanas de Edge y ejecutar en PowerShell:
-
-```powershell
-& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge-test" "https://notebook.google.com/"
-```
-
-Iniciar sesión normalmente en Google y comprobar que NotebookLM muestra los cuadernos de la cuenta.
-
-Cerrar Edge después de completar el inicio de sesión.
-
-**2. Abrir Edge con depuración local habilitada**
-
-```powershell
-& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge-test" --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 "https://notebook.google.com/"
-```
-
-Mantener Edge abierto mientras se utiliza el servidor MCP.
-
-**3. Configurar `.env`**
+Copiar `.env.example` como `.env` y configurar:
 
 ```dotenv
 NOTEBOOKLM_CONNECTION=cdp
+NOTEBOOKLM_BROWSER=msedge
 NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
 ```
 
-**4. Verificar la conexión**
+Opcionalmente, se puede especificar la ubicación del perfil de Edge:
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:9222/json/version
+```dotenv
+NOTEBOOKLM_CDP_PROFILE=C:\Users\TU_USUARIO\notebooklm-edge
 ```
 
-Si la conexión está disponible, el comando mostrará información del navegador y del protocolo de depuración.
+Si no se configura, el proyecto utiliza `playwright/profile-cdp`.
 
-**5. Utilizar el MCP**
+El perfil CDP es independiente del perfil personal de Edge.
 
-Iniciar el servidor desde un cliente compatible, como MCP Inspector o Codex CLI.
+#### 2. Iniciar sesión por primera vez
 
-Las herramientas `listar_cuadernos` y `preguntar_notebooklm` utilizarán la sesión de Edge previamente autenticada.
+En Windows PowerShell, abrir Microsoft Edge normalmente con el perfil configurado:
 
-**Consideraciones de seguridad:**
+```powershell
+& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge" "https://notebook.google.com/"
+```
+
+Si se utiliza este ejemplo, `NOTEBOOKLM_CDP_PROFILE` debe apuntar a la misma carpeta.
+
+Iniciar sesión en Google y comprobar que NotebookLM muestra los cuadernos de la cuenta.
+
+Cerrar las ventanas de ese perfil de Edge después de iniciar sesión.
+
+Este paso solo es necesario para preparar una sesión autenticada.
+
+#### 3. Abrir Edge automáticamente
+
+Ejecutar:
+
+```powershell
+npm.cmd run login
+```
+
+En modo CDP, el proyecto:
+
+1. Comprueba si el puerto CDP está disponible.
+2. Verifica que el proceso corresponde a Edge y al perfil configurado.
+3. Si Edge no está ejecutándose con CDP, intenta iniciarlo automáticamente.
+4. Espera a que la conexión esté disponible.
+5. Abre NotebookLM utilizando la sesión existente.
+
+Si Edge ya está ejecutándose correctamente con CDP, se reutiliza.
+
+El inicio automático está implementado para Windows.
+
+**Importante:** `npm run login` comprueba que NotebookLM se puede abrir, pero no garantiza por sí solo que Google haya autenticado la cuenta. Para comprobarlo, ejecutar `listar_cuadernos`.
+
+#### 4. Utilizar el servidor MCP
+
+Iniciar el servidor desde un cliente compatible con STDIO, como MCP Inspector o Codex CLI.
+
+Las herramientas disponibles son:
+
+- `listar_cuadernos`: obtiene los cuadernos de la cuenta.
+- `preguntar_notebooklm`: consulta un cuaderno y devuelve su respuesta.
+
+Las herramientas utilizan la misma configuración de conexión y pueden iniciar Edge automáticamente cuando sea necesario.
+
+#### Consideraciones de seguridad
 
 - Utilizar un perfil independiente para NotebookLM.
-- Mantener el puerto de depuración accesible únicamente desde el equipo local.
+- Mantener CDP restringido a `127.0.0.1`.
 - No exponer el puerto 9222 a Internet ni a otras computadoras.
-- No compartir el perfil, las cookies ni las direcciones de conexión WebSocket.
-- Cerrar Edge al terminar de utilizar el MCP.
+- No compartir perfiles, cookies ni direcciones WebSocket de depuración.
+- No utilizar el perfil personal habitual de Edge.
+- Utilizar esta modalidad únicamente en un equipo local de confianza.
 
-La depuración remota concede acceso amplio a la sesión del navegador. Esta modalidad está pensada para uso local en un equipo de confianza.
+La depuración remota concede acceso amplio a la sesión del navegador.
+
+El proyecto comprueba localmente el proceso propietario del puerto y el perfil configurado antes de reutilizar una conexión CDP. Esta comprobación reduce conexiones accidentales a otros perfiles, pero no constituye una barrera de seguridad frente a software malicioso ejecutándose en el mismo equipo.
+
 
 ### 4. Configurar un cuaderno predeterminado (opcional)
 
@@ -249,7 +286,7 @@ Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar 
 - Las operaciones deben ejecutarse secuencialmente cuando comparten el mismo perfil del navegador.
 - El listado depende de los cuadernos cargados en la página principal.
 - La compatibilidad con diferentes clientes MCP aún requiere pruebas individuales.
-- El modo CDP requiere que Edge permanezca abierto con la depuración local habilitada. El servidor MCP no inicia automáticamente ese navegador.
+- El inicio automático de Edge mediante CDP está implementado para Windows. En otros sistemas operativos, esta funcionalidad todavía no se ha probado ni implementado.
 
 ## Tecnologías
 
