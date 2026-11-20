@@ -5,6 +5,7 @@ import {
   abrirNavegador,
   conectarNotebookLM,
 } from "../notebooklm/browser.js";
+import { asegurarEdgeCDP } from "../notebooklm/edge-cdp.js";
 
 config({ path: ENV_PATH });
 
@@ -14,6 +15,10 @@ async function login() {
   ).toLowerCase();
 
   if (modo === "cdp") {
+    const visibilidadAnterior =
+      process.env.NOTEBOOKLM_CDP_WINDOW || "visible";
+    process.env.NOTEBOOKLM_CDP_WINDOW = "visible";
+
     console.log("Modo de conexión: CDP");
     console.log("Comprobando conexión con Edge...");
 
@@ -25,23 +30,30 @@ async function login() {
       try {
         await page.goto("https://notebook.google.com/");
 
-        await page.waitForURL(
-          (url) =>
-            url.hostname === "notebook.google.com",
-          { timeout: 15000 }
+        console.log("");
+        console.log("Iniciá sesión en Google si es necesario.");
+        console.log(
+          "Cuando estés dentro de NotebookLM, presioná ENTER."
         );
 
-        console.log("Conexión con NotebookLM establecida.");
-        console.log("URL:", page.url());
-        console.log("");
-        console.log(
-          "Verificá en Edge que tu cuenta esté iniciada."
-        );
-        console.log(
-          "La sesión se conserva en el perfil de Edge."
-        );
+        process.stdin.resume();
+
+        await new Promise<void>((resolve) => {
+          process.stdin.once("data", () => resolve());
+        });
+
+        process.stdin.pause();
+
+        console.log("La sesión se conserva en el perfil de Edge.");
       } finally {
-        await page.close();
+        try {
+          await page.close();
+        } finally {
+          process.env.NOTEBOOKLM_CDP_WINDOW = visibilidadAnterior;
+          await asegurarEdgeCDP(
+            process.env.NOTEBOOKLM_CDP_URL || "http://127.0.0.1:9222"
+          );
+        }
       }
     } finally {
       await cerrar();
