@@ -16,15 +16,18 @@ El servidor permite listar los cuadernos disponibles en una cuenta de Google y r
 - Respuestas de NotebookLM convertidas a texto Markdown.
 - Comunicación MCP mediante STDIO.
 
+
 ## Requisitos
 
 - Node.js y npm.
 - Git.
-- Un navegador Chromium instalado mediante Playwright.
 - Una cuenta de Google con acceso a NotebookLM.
 - Un cliente compatible con servidores MCP locales mediante STDIO.
+- Un navegador según el modo de conexión:
+  - **Microsoft Edge (recomendado en Windows):** utilizar el navegador instalado en el sistema. No es necesario instalar Chromium mediante Playwright.
+  - **Chromium (alternativa):** instalarlo mediante Playwright con `npx playwright install chromium`.
 
-El proyecto se ha desarrollado y probado principalmente en Windows.
+El proyecto se ha desarrollado y probado principalmente en Windows. Se recomienda Microsoft Edge mediante CDP porque Google puede bloquear el inicio de sesión desde Chromium controlado por Playwright.
 
 ## Instalación
 
@@ -37,45 +40,52 @@ cd notebooklm-mcp
 
 ### 2. Instalar las dependencias
 
+Ejecutar desde la carpeta del proyecto:
+
 ```bash
 npm install
+```
+
+En Windows PowerShell, si existen restricciones de ejecución, utilizar:
+
+```powershell
+npm.cmd install
+```
+
+**Para Microsoft Edge (recomendado en Windows):**
+
+No es necesario instalar ningún navegador adicional mediante Playwright. Se utiliza Microsoft Edge instalado en Windows.
+
+**Para Chromium (alternativa):**
+
+Instalar el navegador de Playwright:
+
+```bash
 npx playwright install chromium
 ```
 
-En Windows PowerShell, si los comandos anteriores presentan restricciones de ejecución, se pueden utilizar `npm.cmd` y `npx.cmd`.
+En Windows PowerShell se puede utilizar `npx.cmd`.
 
-### 3. Iniciar sesión con Chromium (modo persistent)
 
-Este método utiliza Chromium mediante Playwright y un perfil persistente.
+### 3. Configurar el navegador e iniciar sesión
 
-**Importante:** durante las pruebas, Google rechazó el inicio de sesión desde Chromium controlado por Playwright. Por eso, en Windows se recomienda utilizar Microsoft Edge mediante CDP, como se explica en la siguiente sección.
+El servidor permite utilizar Microsoft Edge mediante CDP o Chromium mediante Playwright.
 
-```bash
-npm run login
+En Windows se recomienda Microsoft Edge, ya que permite iniciar sesión normalmente en Google y reutilizar esa sesión desde el MCP.
+
+#### Opción A: Microsoft Edge (recomendada en Windows)
+
+**1. Configurar `.env`**
+
+Copiar `.env.example` como `.env` en la carpeta del proyecto.
+
+En Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
-Se abrirá Chromium.
-
-1. Iniciar sesión en Google si es necesario.
-2. Acceder a NotebookLM.
-3. Regresar a la terminal y presionar Enter.
-
-La sesión se conservará localmente en `playwright/profile/`.
-
-**Seguridad:** no compartir ni publicar esta carpeta, ya que contiene información de la sesión del navegador.
-
-
-### Alternativa: conexión automática mediante CDP (Microsoft Edge)
-
-Algunas cuentas de Google pueden rechazar el inicio de sesión desde navegadores controlados directamente por Playwright.
-
-Como alternativa, el proyecto permite iniciar sesión normalmente en Microsoft Edge y conectarse mediante Chrome DevTools Protocol (CDP).
-
-**Esta modalidad se ha probado correctamente en Windows con Microsoft Edge y MCP Inspector.**
-
-#### 1. Configurar `.env`
-
-Copiar `.env.example` como `.env` y configurar:
+Comprobar que `.env` contiene:
 
 ```dotenv
 NOTEBOOKLM_CONNECTION=cdp
@@ -83,33 +93,35 @@ NOTEBOOKLM_BROWSER=msedge
 NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
 ```
 
-Opcionalmente, se puede especificar la ubicación del perfil de Edge:
+El servidor utiliza por defecto un perfil independiente ubicado en:
 
-```dotenv
-NOTEBOOKLM_CDP_PROFILE=C:\Users\TU_USUARIO\notebooklm-edge
+```text
+playwright/profile-cdp
 ```
 
-Si no se configura, el proyecto utiliza `playwright/profile-cdp`.
+No es necesario configurar `NOTEBOOKLM_CDP_PROFILE` si se utiliza ese perfil predeterminado.
 
-El perfil CDP es independiente del perfil personal de Edge.
+**2. Iniciar sesión por primera vez**
 
-#### 2. Iniciar sesión por primera vez
+Para iniciar sesión en Google, primero se debe abrir Edge normalmente, sin depuración CDP, utilizando el mismo perfil que después utilizará el MCP.
 
-En Windows PowerShell, abrir Microsoft Edge normalmente con el perfil configurado:
+Desde la carpeta del proyecto, ejecutar en PowerShell:
 
 ```powershell
-& "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" --user-data-dir="$env:USERPROFILE\notebooklm-edge" "https://notebook.google.com/"
+$perfil = Join-Path (Get-Location) "playwright\profile-cdp"
+$edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+& $edge --user-data-dir="$perfil" "https://notebook.google.com/"
 ```
 
-Si se utiliza este ejemplo, `NOTEBOOKLM_CDP_PROFILE` debe apuntar a la misma carpeta.
+Si Edge está instalado en otra ubicación, ajustar la ruta de `$edge`.
 
-Iniciar sesión en Google y comprobar que NotebookLM muestra los cuadernos de la cuenta.
+Iniciar sesión en Google y comprobar que NotebookLM muestra los cuadernos.
 
-Cerrar las ventanas de ese perfil de Edge después de iniciar sesión.
+Después, cerrar todas las ventanas de Edge que utilicen ese perfil.
 
-Este paso solo es necesario para preparar una sesión autenticada.
+Este procedimiento solamente es necesario para preparar una nueva sesión autenticada.
 
-#### 3. Abrir Edge automáticamente
+**3. Iniciar Edge automáticamente mediante CDP**
 
 Ejecutar:
 
@@ -117,48 +129,70 @@ Ejecutar:
 npm.cmd run login
 ```
 
-En modo CDP, el proyecto:
+El servidor intentará abrir Microsoft Edge automáticamente utilizando el perfil autenticado y el puerto CDP local `9222`.
 
-1. Comprueba si el puerto CDP está disponible.
-2. Verifica que el proceso corresponde a Edge y al perfil configurado.
-3. Si Edge no está ejecutándose con CDP, intenta iniciarlo automáticamente.
-4. Espera a que la conexión esté disponible.
-5. Abre NotebookLM utilizando la sesión existente.
+Si Edge ya está ejecutándose correctamente con CDP y el perfil configurado, se reutilizará.
 
-Si Edge ya está ejecutándose correctamente con CDP, se reutiliza.
+El comando comprueba la conexión con NotebookLM, pero no garantiza por sí solo que la cuenta esté autenticada. La autenticación se puede comprobar utilizando `listar_cuadernos` desde un cliente MCP.
 
-El inicio automático está implementado para Windows.
+**4. Perfil personalizado (opcional)**
 
-**Importante:** `npm run login` comprueba que NotebookLM se puede abrir, pero no garantiza por sí solo que Google haya autenticado la cuenta. Para comprobarlo, ejecutar `listar_cuadernos`.
+También se puede configurar una carpeta diferente:
 
-#### 4. Utilizar el servidor MCP
+```dotenv
+NOTEBOOKLM_CDP_PROFILE=C:\Users\TU_USUARIO\notebooklm-edge
+```
 
-Iniciar el servidor desde un cliente compatible con STDIO, como MCP Inspector o Codex CLI.
+En ese caso, el inicio de sesión inicial debe realizarse utilizando exactamente la misma carpeta como argumento de `--user-data-dir`.
 
-Las herramientas disponibles son:
+No utilizar el perfil personal habitual de Edge.
 
-- `listar_cuadernos`: obtiene los cuadernos de la cuenta.
-- `preguntar_notebooklm`: consulta un cuaderno y devuelve su respuesta.
+#### Opción B: Chromium mediante Playwright (alternativa)
 
-Las herramientas utilizan la misma configuración de conexión y pueden iniciar Edge automáticamente cuando sea necesario.
+**1. Configurar `.env`**
 
-#### Consideraciones de seguridad
+```dotenv
+NOTEBOOKLM_CONNECTION=persistent
+NOTEBOOKLM_BROWSER=chromium
+```
 
-- Utilizar un perfil independiente para NotebookLM.
+**2. Instalar Chromium**
+
+```powershell
+npx.cmd playwright install chromium
+```
+
+**3. Iniciar sesión**
+
+```powershell
+npm.cmd run login
+```
+
+Se abrirá Chromium mediante Playwright.
+
+1. Iniciar sesión en Google si es posible.
+2. Acceder a NotebookLM.
+3. Regresar a la terminal y presionar Enter.
+
+La sesión se conservará localmente en `playwright/profile/`.
+
+**Limitación:** durante las pruebas, Google rechazó el inicio de sesión desde Chromium controlado por Playwright. Por eso, en Windows se recomienda Microsoft Edge.
+
+#### Seguridad
+
+- Utilizar perfiles independientes para NotebookLM.
+- No compartir las carpetas de perfiles, cookies ni sesiones.
 - Mantener CDP restringido a `127.0.0.1`.
-- No exponer el puerto 9222 a Internet ni a otras computadoras.
-- No compartir perfiles, cookies ni direcciones WebSocket de depuración.
-- No utilizar el perfil personal habitual de Edge.
-- Utilizar esta modalidad únicamente en un equipo local de confianza.
+- No exponer el puerto `9222` a Internet ni a otras computadoras.
+- Utilizar CDP únicamente en equipos locales de confianza.
 
-La depuración remota concede acceso amplio a la sesión del navegador.
+La depuración remota permite acceder a la sesión del navegador. El servidor verifica el proceso y el perfil configurado antes de reutilizar una conexión CDP, pero esto no sustituye las medidas de seguridad del equipo.
 
-El proyecto comprueba localmente el proceso propietario del puerto y el perfil configurado antes de reutilizar una conexión CDP. Esta comprobación reduce conexiones accidentales a otros perfiles, pero no constituye una barrera de seguridad frente a software malicioso ejecutándose en el mismo equipo.
 
 
 ### 4. Configurar un cuaderno predeterminado (opcional)
 
-Copiar `.env.example` como `.env` y reemplazar el identificador de ejemplo por el de un cuaderno propio.
+Editar el archivo .env creado en el paso 3
 
 ```dotenv
 NOTEBOOKLM_URL=https://notebook.google.com/notebook/ID_DEL_CUADERNO
@@ -282,7 +316,7 @@ Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar 
 ## Limitaciones actuales
 
 - Depende de la interfaz web de NotebookLM; cambios en sus elementos HTML pueden requerir ajustes en los selectores.
-- La automatización requiere un navegador con interfaz gráfica. El modo persistente admite Chromium, Firefox, Chrome y Edge; el modo CDP se ha probado con Microsoft Edge.
+- La automatización requiere un navegador con interfaz gráfica. Las opciones documentadas son Microsoft Edge mediante CDP y Chromium mediante Playwright. El inicio de sesión con Chromium puede ser bloqueado por Google.
 - Las operaciones deben ejecutarse secuencialmente cuando comparten el mismo perfil del navegador.
 - El listado depende de los cuadernos cargados en la página principal.
 - La compatibilidad con diferentes clientes MCP aún requiere pruebas individuales.
