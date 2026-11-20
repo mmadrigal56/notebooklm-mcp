@@ -7,77 +7,194 @@ export interface Cuaderno {
   url: string;
 }
 
+const TARJETAS =
+  ".project-button-card:not(.featured-projects-container *)";
+
 export async function listarCuadernos(
   page: Page
 ): Promise<Cuaderno[]> {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("https://notebook.google.com/");
 
-  await page.getByRole("button", {
-    name: "Vista de cuadrícula",
-    exact: true,
-  }).click();
-
-  // Esperar a que aparezcan las tarjetas.
-  await page.locator(".project-button-card:not(.featured-projects-container *)").first().waitFor({
-    state: "visible",
-    timeout: 30000,
+  const cuadricula = page.getByRole("button", {
+    name: /^(Vista de cuadrícula|Grid view)$/i,
   });
 
-    // Ampliar el área visible y desplazar para comprobar la carga.
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(2000);
+  if (await cuadricula.isVisible()) {
+    await cuadricula.click();
+  }
 
-  console.error("Diagnóstico de tarjetas:", JSON.stringify(
-    await page.locator(".project-button-card").evaluateAll(
-      tarjetas => tarjetas.map(tarjeta => ({
-        titulo: tarjeta.querySelector(".project-button-title")
-          ?.textContent?.trim(),
-        href: tarjeta.querySelector("a")?.getAttribute("href"),
-        destacada: Boolean(
-          tarjeta.closest(".featured-projects-container")
-        ),
-      }))
-    ),
-    null,
-    2
-  ));
+  const verMas = page.getByRole("button", {
+    name: "Ver más cuadernos recientes",
+    exact: true,
+  });
 
-  const cuadernos = await page
-    .locator(".project-button-card:not(.featured-projects-container *)")
-    .evaluateAll((tarjetas) =>
-      tarjetas
-        .map((tarjeta) => {
-          const enlace = tarjeta.querySelector<HTMLAnchorElement>(
-            'a[href^="/notebook/"]'
-          );
+  await verMas.waitFor({
+    state: "visible",
+    timeout: 15000,
+  });
 
-          const nombre = tarjeta
-            .querySelector(".project-button-title")
-            ?.textContent?.trim();
+  await verMas.click();
+  await verMas.waitFor({
+    state: "hidden",
+    timeout: 15000,
+  });
 
-          const emoji = tarjeta
+  try {
+    await page.locator(TARJETAS).first().waitFor({
+      state: "visible",
+      timeout: 30000,
+    });
+  } catch {
+    throw new Error(
+      "No se encontraron tarjetas de cuadernos. " +
+      "Comprobá la sesión de Google y la interfaz de NotebookLM."
+    );
+  }
+
+  const encontrados = new Map<string, Cuaderno>();
+
+  async function recoger(): Promise<void> {
+    const cuadernos = await page.locator(TARJETAS).evaluateAll(
+      tarjetas => tarjetas.flatMap(tarjeta => {
+        const enlace = tarjeta.querySelector<HTMLAnchorElement>(
+          'a[href*="/notebook/"]'
+        );
+        const nombre = tarjeta
+          .querySelector(".project-button-title")
+          ?.textContent?.trim();
+
+        if (!enlace || !nombre) {
+          return [];
+        }
+
+        const url = new URL(enlace.href);
+        const id = url.pathname.match(
+          /^\/notebook\/([a-zA-Z0-9-]+)\/?$/
+        )?.[1];
+
+        if (!id) {
+          return [];
+        }
+
+        return [{
+          nombre,
+          emoji: tarjeta
             .querySelector(".project-button-box-icon")
-            ?.textContent?.trim();
-
-          const href = enlace?.getAttribute("href");
-
-          if (!href || !nombre) {
-            return null;
-          }
-
-          return {
-            nombre,
-            emoji: emoji || "",
-            id: href.replace("/notebook/", ""),
-            url: new URL(
-              href,
-              "https://notebook.google.com"
-            ).toString(),
-          };
-        })
-        .filter((cuaderno) => cuaderno !== null)
+            ?.textContent?.trim() || "",
+          id,
+          url: url.toString(),
+        }];
+      })
     );
 
-  return cuadernos;
+    for (const cuaderno of cuadernos) {
+      encontrados.set(cuaderno.id, cuaderno);
+    }
+  }
+
+  async function desplazar(
+    reiniciar: boolean
+  ): Promise<boolean> {
+    return page.evaluate(({ selector, reiniciar }) => {
+      const contenedores = new Set<Element>();
+
+      if (document.scrollingElement) {
+        contenedores.add(document.scrollingElement);
+      }
+
+      for (const tarjeta of document.querySelectorAll(selector)) {
+        let padre = tarjeta.parentElement;
+
+        while (padre) {
+          if (
+            padre.scrollHeight > padre.clientHeight + 1 ||
+            padre.scrollWidth > padre.clientWidth + 1
+          ) {
+            contenedores.add(padre);
+          }
+
+          padre = padre.parentElement;
+        }
+      }
+
+      let huboMovimiento = false;
+
+      for (const elemento of contenedores) {
+        const antesY = elemento.scrollTop;
+        const antesX = elemento.scrollLeft;
+
+        elemento.scrollTo({
+          top: reiniciar
+            ? 0
+            : antesY + Math.max(1, elemento.clientHeight * 0.8),
+          left: reiniciar
+            ? 0
+            : antesX + Math.max(1, elemento.clientWidth * 0.8),
+          behavior: "instant",
+        });
+
+        huboMovimiento ||= (
+          elemento.scrollTop !== antesY ||
+          elemento.scrollLeft !== antesX
+        );
+      }
+
+      return huboMovimiento;
+    }, { selector: TARJETAS, reiniciar });
+  }
+
+  // Exigir varias observaciones sin cambios al llegar al final.
+  // Recoger en cada paso conserva tarjetas que luego desaparecen
+  // del DOM en una lista virtualizada.
+  const limite = Date.now() + 120000;
+  let pasadasSinNuevos = 0;
+
+  while (Date.now() < limite) {
+    const cantidadInicial = encontrados.size;
+    await desplazar(true);
+
+    let finalEstable = 0;
+
+    while (Date.now() < limite && finalEstable < 4) {
+      await recoger();
+      const antes = encontrados.size;
+      const movimiento = await desplazar(false);
+
+      // Intervalo de observación entre desplazamientos.
+      await page.waitForTimeout(750);
+      await recoger();
+
+      const cargando = await page.locator(
+        '[role="progressbar"]:visible, [aria-busy="true"]:visible'
+      ).count();
+
+      if (
+        !movimiento &&
+        encontrados.size === antes &&
+        cargando === 0
+      ) {
+        finalEstable++;
+      } else {
+        finalEstable = 0;
+      }
+    }
+
+    if (finalEstable < 4) {
+      break;
+    }
+
+    pasadasSinNuevos = encontrados.size === cantidadInicial
+      ? pasadasSinNuevos + 1
+      : 0;
+
+    if (pasadasSinNuevos >= 2) {
+      return [...encontrados.values()];
+    }
+  }
+
+  throw new Error(
+    "No se pudo completar la carga de cuadernos en 120 segundos. " +
+    `Se encontraron ${encontrados.size}, pero la carga no se estabilizó.`
+  );
 }
