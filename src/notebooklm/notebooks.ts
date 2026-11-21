@@ -24,32 +24,26 @@ export async function listarCuadernos(
     await cuadricula.click();
   }
 
+    // Esperar a que cargue la lista antes de comprobar
+  // si existe la opción de ampliarla.
+  await page.locator(TARJETAS).first().waitFor({
+    state: "visible",
+    timeout: 30000,
+  });
+
   const verMas = page.getByRole("button", {
     name: "Ver más cuadernos recientes",
     exact: true,
   });
 
-  await verMas.waitFor({
-    state: "visible",
-    timeout: 15000,
-  });
-
-  await verMas.click();
-  await verMas.waitFor({
-    state: "hidden",
-    timeout: 15000,
-  });
-
-  try {
-    await page.locator(TARJETAS).first().waitFor({
-      state: "visible",
-      timeout: 30000,
+  // Con pocos cuadernos, la lista ya está completa
+  // y NotebookLM no muestra este botón.
+  if (await verMas.count() > 0) {
+    await verMas.click({ timeout: 15000 });
+    await verMas.waitFor({
+      state: "hidden",
+      timeout: 15000,
     });
-  } catch {
-    throw new Error(
-      "No se encontraron tarjetas de cuadernos. " +
-      "Comprobá la sesión de Google y la interfaz de NotebookLM."
-    );
   }
 
   const encontrados = new Map<string, Cuaderno>();
