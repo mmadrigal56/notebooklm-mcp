@@ -1,331 +1,171 @@
 # NotebookLM MCP
 
-Servidor MCP (*Model Context Protocol*) que permite conectar asistentes de IA compatibles con servidores MCP locales a Google NotebookLM.
+Servidor MCP (*Model Context Protocol*) que permite listar cuadernos de Google NotebookLM y consultar sus fuentes desde asistentes compatibles con servidores MCP locales.
 
-Utiliza **Playwright** para interactuar con NotebookLM mediante un navegador web. Permite iniciar un navegador con un perfil persistente o conectarse a una sesión existente de Microsoft Edge mediante **Chrome DevTools Protocol (CDP)**.
+Utiliza Playwright para interactuar con la interfaz web de NotebookLM. La configuración recomendada para Windows utiliza Microsoft Edge mediante CDP y ejecuta las consultas sin abrir una ventana.
 
-El servidor permite listar los cuadernos disponibles en una cuenta de Google y realizar consultas basadas en sus fuentes.
+Cada persona utiliza su propia cuenta de Google y sus propios cuadernos.
 
 ## Características
 
-- Inicio de sesión con una cuenta personal de Google.
-- Persistencia local de la sesión del navegador.
-- Listado de cuadernos disponibles en NotebookLM.
-- Consultas a diferentes cuadernos mediante su identificador.
-- Cuaderno predeterminado opcional mediante `.env`.
-- Respuestas de NotebookLM convertidas a texto Markdown.
+- Listado de cuadernos con nombre, emoji, identificador y enlace.
+- Consulta de cuadernos mediante su identificador o nombre.
+- Cuaderno predeterminado opcional.
+- Persistencia local de la sesión de Google en un perfil independiente.
+- Consultas sin ventana con Microsoft Edge mediante CDP.
+- Apertura de la lista ampliada de cuadernos cuando está disponible.
+- Recorrido de las tarjetas y eliminación de duplicados por identificador.
+- Respuesta vacía `[]` cuando se reconoce una cuenta sin cuadernos.
+- Respuestas de NotebookLM convertidas a Markdown.
 - Comunicación MCP mediante STDIO.
-
 
 ## Requisitos
 
+- Windows para el inicio automático de Microsoft Edge mediante CDP.
+- Microsoft Edge instalado.
 - Node.js y npm.
 - Git.
 - Una cuenta de Google con acceso a NotebookLM.
 - Un cliente compatible con servidores MCP locales mediante STDIO.
-- Un navegador según el modo de conexión:
-  - **Microsoft Edge (recomendado en Windows):** utilizar el navegador instalado en el sistema. No es necesario instalar Chromium mediante Playwright.
-  - **Chromium (alternativa):** instalarlo mediante Playwright con `npx playwright install chromium`.
 
-El proyecto se ha desarrollado y probado principalmente en Windows. Se recomienda Microsoft Edge mediante CDP porque Google puede bloquear el inicio de sesión desde Chromium controlado por Playwright.
+El proyecto se ha probado principalmente en Windows con Codex CLI y MCP Inspector.
 
-## Instalación
+La automatización depende de la interfaz web de NotebookLM. Los cambios en esa interfaz pueden requerir actualizar el proyecto.
+
+## Instalación recomendada en Windows
+
+Ejecutar los comandos en PowerShell.
+
+Se utiliza `npm.cmd` y `npx.cmd` para evitar el bloqueo de los archivos
+`npm.ps1` y `npx.ps1` cuando PowerShell restringe la ejecución de scripts.
 
 ### 1. Clonar el repositorio
 
-```bash
+```powershell
 git clone https://github.com/mmadrigal56/notebooklm-mcp.git
 cd notebooklm-mcp
 ```
 
+Conservar esta carpeta: el cliente MCP ejecutará el servidor desde ella.
+
 ### 2. Instalar las dependencias
-
-Ejecutar desde la carpeta del proyecto:
-
-```bash
-npm install
-```
-
-En Windows PowerShell, si existen restricciones de ejecución, utilizar:
 
 ```powershell
 npm.cmd install
 ```
 
-**Para Microsoft Edge (recomendado en Windows):**
+Para utilizar Microsoft Edge instalado en Windows, no es necesario descargar Chromium mediante Playwright.
 
-No es necesario instalar ningún navegador adicional mediante Playwright. Se utiliza Microsoft Edge instalado en Windows.
+### 3. Crear la configuración local
 
-**Para Chromium (alternativa):**
-
-Instalar el navegador de Playwright:
-
-```bash
-npx playwright install chromium
-```
-
-En Windows PowerShell se puede utilizar `npx.cmd`.
-
-
-### 3. Configurar el navegador e iniciar sesión
-
-El servidor permite utilizar Microsoft Edge mediante CDP o Chromium mediante Playwright.
-
-En Windows se recomienda Microsoft Edge, ya que permite iniciar sesión normalmente en Google y reutilizar esa sesión desde el MCP.
-
-#### Opción A: Microsoft Edge (recomendada en Windows)
-
-**1. Configurar `.env`**
-
-Copiar `.env.example` como `.env` en la carpeta del proyecto.
-
-En Windows PowerShell:
+Solo en una instalación nueva:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Comprobar que `.env` contiene:
+La configuración recomendada es:
 
 ```dotenv
 NOTEBOOKLM_CONNECTION=cdp
 NOTEBOOKLM_BROWSER=msedge
 NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
 NOTEBOOKLM_CDP_WINDOW=headless
+
+# Cuaderno predeterminado opcional
+NOTEBOOKLM_URL=
 ```
 
-### Consultas sin ventana
+Si `.env` ya existe, conservar sus valores y actualizar únicamente las opciones necesarias.
 
-Al copiar `.env.example` como `.env`, las consultas quedan configuradas
-para ejecutarse sin abrir una ventana de Edge.
+El archivo `.env` es local y no debe subirse al repositorio.
 
-| Valor de `NOTEBOOKLM_CDP_WINDOW` | Comportamiento |
-|---|---|
-| `headless` | Ejecuta Edge sin ventana. Configuración recomendada. |
-| `hidden` | Abre una ventana y luego la oculta. |
-| `visible` | Mantiene la ventana visible para revisar el funcionamiento. |
+### 4. Preparar el inicio de sesión
 
-Esta configuración se aplica a Microsoft Edge mediante CDP.
-La alternativa Chromium mediante Playwright utiliza una ventana visible.
-
-El comando `npm.cmd run login` abre Edge de forma visible para permitir
-el inicio de sesión. Cuando NotebookLM muestre los cuadernos, regresar
-a la terminal y presionar Enter. Al finalizar, Edge vuelve al modo
-configurado en `.env`.
-
-### Aplicar cambios de configuración
-
-Si se modifica `.env` mientras el servidor MCP está funcionando,
-reiniciar la conexión para que lea los cambios:
-
-- En Codex CLI: salir de la sesión y volver a ejecutar `codex.cmd`.
-- En la aplicación de Codex: cerrarla completamente y volver a abrirla.
-
-Después, solicitar `listar_cuadernos` para comprobar la conexión.
-
-No es necesario borrar el chat, eliminar el proyecto ni reinstalar
-las dependencias.
-
-Si ya existe un archivo `.env`, agregar o actualizar
-`NOTEBOOKLM_CDP_WINDOW=headless` conservando las demás variables.
-Actualizar el repositorio no modifica automáticamente el `.env` local.
-
-El servidor utiliza por defecto un perfil independiente ubicado en:
+El proyecto utiliza un perfil independiente de Edge en:
 
 ```text
 playwright/profile-cdp
 ```
 
-No es necesario configurar `NOTEBOOKLM_CDP_PROFILE` si se utiliza ese perfil predeterminado.
+Este perfil guarda la sesión de Google utilizada por el MCP. No es el perfil habitual del navegador personal.
 
-**2. Iniciar sesión por primera vez**
-
-Para iniciar sesión en Google, primero se debe abrir Edge normalmente, sin depuración CDP, utilizando el mismo perfil que después utilizará el MCP.
-
-Desde la carpeta del proyecto, ejecutar en PowerShell:
+Para preparar una sesión nueva, abrir Edge normalmente con ese perfil, sin CDP:
 
 ```powershell
 $perfil = Join-Path (Get-Location) "playwright\profile-cdp"
-$edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
-& $edge --user-data-dir="$perfil" "https://notebook.google.com/"
+
+$rutasEdge = @(
+    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+    "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
+    "$env:LOCALAPPDATA\Microsoft\Edge\Application\msedge.exe"
+)
+
+$edge = $rutasEdge |
+    Where-Object { Test-Path -LiteralPath $_ } |
+    Select-Object -First 1
+
+if (-not $edge) {
+    throw "No se encontró Microsoft Edge instalado."
+}
+
+& $edge "--user-data-dir=$perfil" "https://notebook.google.com/"
 ```
 
-Si Edge está instalado en otra ubicación, ajustar la ruta de `$edge`.
+En el navegador:
 
-Iniciar sesión en Google y comprobar que NotebookLM muestra los cuadernos.
+1. Iniciar sesión con la cuenta de Google que utilizará el MCP.
+2. Abrir `https://notebook.google.com/`.
+3. Comprobar que aparecen los cuadernos de esa cuenta, o la pantalla de bienvenida si está vacía.
+4. Cerrar las ventanas de Edge que utilicen este perfil dedicado.
 
-Después, cerrar todas las ventanas de Edge que utilicen ese perfil.
+Este procedimiento permite preparar la sesión sin iniciar Google desde un navegador controlado por Playwright.
 
-Este procedimiento solamente es necesario para preparar una nueva sesión autenticada.
+### 5. Comprobar la conexión mediante CDP
 
-**3. Iniciar Edge automáticamente mediante CDP**
-
-Ejecutar:
+Desde la carpeta del proyecto:
 
 ```powershell
 npm.cmd run login
 ```
 
-El servidor intentará abrir Microsoft Edge automáticamente utilizando el perfil autenticado y el puerto CDP local `9222`.
+El comando abre Edge de forma visible con el perfil dedicado.
 
-Si Edge ya está ejecutándose correctamente con CDP y el perfil configurado, se reutilizará.
+1. Comprobar que NotebookLM muestra la cuenta correcta.
+2. Completar el inicio de sesión si es necesario.
+3. Regresar a PowerShell y presionar Enter.
 
-El comando comprueba la conexión con NotebookLM, pero no garantiza por sí solo que la cuenta esté autenticada. La autenticación se puede comprobar utilizando `listar_cuadernos` desde un cliente MCP.
+Al finalizar, el proyecto intenta devolver Edge al modo configurado en `.env`.
 
-**4. Perfil personalizado (opcional)**
+Con `NOTEBOOKLM_CDP_WINDOW=headless`, las consultas posteriores se ejecutan sin ventana.
 
-También se puede configurar una carpeta diferente:
+Si aparece un error al cambiar el modo de Edge, consultar la sección de solución de problemas.
 
-```dotenv
-NOTEBOOKLM_CDP_PROFILE=C:\Users\TU_USUARIO\notebooklm-edge
-```
-
-En ese caso, el inicio de sesión inicial debe realizarse utilizando exactamente la misma carpeta como argumento de `--user-data-dir`.
-
-No utilizar el perfil personal habitual de Edge.
-
-#### Opción B: Chromium mediante Playwright (alternativa)
-
-**1. Configurar `.env`**
-
-```dotenv
-NOTEBOOKLM_CONNECTION=persistent
-NOTEBOOKLM_BROWSER=chromium
-```
-
-**2. Instalar Chromium**
+### 6. Verificar TypeScript
 
 ```powershell
-npx.cmd playwright install chromium
+npm.cmd run check
 ```
 
-**3. Iniciar sesión**
+Este comando comprueba el código TypeScript. No verifica por sí solo la sesión de Google ni la conexión con NotebookLM.
 
-```powershell
-npm.cmd run login
-```
+### 7. Registrar el servidor en Codex CLI
 
-Se abrirá Chromium mediante Playwright.
-
-1. Iniciar sesión en Google si es posible.
-2. Acceder a NotebookLM.
-3. Regresar a la terminal y presionar Enter.
-
-La sesión se conservará localmente en `playwright/profile/`.
-
-**Limitación:** durante las pruebas, Google rechazó el inicio de sesión desde Chromium controlado por Playwright. Por eso, en Windows se recomienda Microsoft Edge.
-
-#### Seguridad
-
-- Utilizar perfiles independientes para NotebookLM.
-- No compartir las carpetas de perfiles, cookies ni sesiones.
-- Mantener CDP restringido a `127.0.0.1`.
-- No exponer el puerto `9222` a Internet ni a otras computadoras.
-- Utilizar CDP únicamente en equipos locales de confianza.
-
-La depuración remota permite acceder a la sesión del navegador. El servidor verifica el proceso y el perfil configurado antes de reutilizar una conexión CDP, pero esto no sustituye las medidas de seguridad del equipo.
-
-
-
-### 4. Configurar un cuaderno predeterminado (opcional)
-
-Editar el archivo .env creado en el paso 3
-
-```dotenv
-NOTEBOOKLM_URL=https://notebook.google.com/notebook/ID_DEL_CUADERNO
-```
-
-Esta configuración es opcional para listar cuadernos y consultar uno mediante su identificador.
-
-Si se utiliza `preguntar_notebooklm` sin indicar `notebookId`, se necesita un cuaderno predeterminado configurado.
-
-### 5. Verificar la instalación
-
-```bash
-npm run check
-```
-
-### 6. Iniciar el servidor MCP
-
-```bash
-npm run mcp
-```
-
-El servidor utiliza STDIO. Normalmente debe iniciarlo el cliente MCP, no una terminal independiente.
-
-## Herramientas disponibles
-
-### `listar_cuadernos`
-
-Obtiene los cuadernos disponibles en la cuenta de NotebookLM.
-
-No requiere parámetros.
-
-Ejemplo de resultado:
-
-```json
-[
-  {
-    "nombre": "Mi cuaderno",
-    "emoji": "📚",
-    "id": "identificador-del-cuaderno",
-    "url": "https://notebook.google.com/notebook/identificador-del-cuaderno"
-  }
-]
-```
-
-### `preguntar_notebooklm`
-
-Envía una pregunta a un cuaderno de NotebookLM y devuelve su respuesta.
-
-**Parámetros:**
-
-| Parámetro | Tipo | Obligatorio |
-|---|---|---|
-| `pregunta` | string | Sí |
-| `notebookId` | string (UUID) | No |
-
-Si se proporciona `notebookId`, se consulta ese cuaderno. En caso contrario, se utiliza `NOTEBOOKLM_URL`.
-
-## Ejemplos de uso
-
-Una vez conectado el servidor a un cliente MCP compatible, se pueden realizar solicitudes como:
-
-- «Mostrame mis cuadernos de NotebookLM».
-- «Consultá mi cuaderno de Bases de Datos y explicame sus temas principales».
-- «Según mi cuaderno de Ingeniería, ¿qué es un Sprint en Scrum?».
-
-El cliente de IA debe invocar las herramientas MCP correspondientes.
-
-## Configuración de clientes MCP
-
-El servidor se comunica mediante STDIO y su punto de entrada de desarrollo es:
-
-```text
-src/mcp/server.ts
-```
-
-Para ejecutarlo directamente se puede utilizar `tsx`, indicando la ruta absoluta del archivo y asegurándose de que las dependencias estén instaladas.
-
-La integración con Codex CLI se ha probado correctamente en Windows. Otros clientes MCP compatibles con STDIO podrían utilizar el servidor, pero todavía no se ha verificado su funcionamiento.
-
-### Conectar con Codex CLI
-
-**1. Instalar Codex CLI**
+Si Codex CLI todavía no está instalado:
 
 ```powershell
 npm.cmd install -g @openai/codex
 ```
 
-**2. Registrar el servidor MCP**
-
-Reemplazar `RUTA_DEL_PROYECTO` por la ruta absoluta donde se clonó el repositorio.
+Desde la carpeta del repositorio, registrar el servidor usando rutas absolutas:
 
 ```powershell
-codex.cmd mcp add notebooklm-mcp -- npx.cmd --prefix RUTA_DEL_PROYECTO tsx RUTA_DEL_PROYECTO\src\mcp\server.ts
+$rutaProyecto = (Get-Location).Path
+
+codex.cmd mcp add notebooklm-mcp -- npx.cmd --prefix "$rutaProyecto" tsx "$rutaProyecto\src\mcp\server.ts"
 ```
 
-**3. Verificar la configuración**
+Comprobar el registro:
 
 ```powershell
 codex.cmd mcp list
@@ -334,42 +174,386 @@ codex.cmd mcp get notebooklm-mcp
 
 El servidor debe aparecer habilitado y utilizar el transporte `stdio`.
 
-**4. Iniciar Codex**
+Si ya existe un registro con ese nombre, revisar su configuración antes de volver a registrarlo. Si apunta a una ubicación anterior:
+
+```powershell
+codex.cmd mcp remove notebooklm-mcp
+```
+
+Después, ejecutar nuevamente el comando de registro desde la carpeta actual del proyecto.
+
+### 8. Probar desde Codex
+
+Iniciar Codex:
 
 ```powershell
 codex.cmd
 ```
 
-**5. Probar las herramientas**
+Solicitar:
 
-Ejemplo de solicitud:
+> Ejecutá listar_cuadernos del MCP notebooklm-mcp y mostrame el resultado.
 
-> Mostrame mis cuadernos de NotebookLM. Después consultá el cuaderno Bases y explicame cuáles son sus temas principales.
+Después, probar una consulta a un cuaderno que tenga fuentes:
 
-Codex puede ejecutar `listar_cuadernos` y `preguntar_notebooklm` para completar la solicitud.
+> Consultá el cuaderno “Bases” y resumí sus temas principales.
 
-**Estado:** integración probada correctamente en Windows con Codex CLI.
+El cliente debe ejecutar las herramientas MCP correspondientes.
+
+La configuración anterior corresponde a Codex CLI. Otros clientes compatibles con STDIO necesitan su propio registro del servidor.
+
+## Uso normal
+
+Una vez instalado y registrado:
+
+- El cliente MCP inicia el servidor.
+- El servidor utiliza la sesión guardada en el perfil dedicado.
+- Con `headless`, las consultas se realizan sin ventana.
+- No es necesario ejecutar `npm.cmd run login` antes de cada consulta.
+- Si la sesión vence, volver a iniciar sesión.
+- No es necesario crear una instalación del servidor por cada cuaderno.
+
+Normalmente no se debe ejecutar `npm.cmd run mcp` en una terminal independiente mientras el cliente intenta iniciar otra instancia.
+
+## Herramientas disponibles
+
+### `listar_cuadernos`
+
+Lista los cuadernos disponibles en la cuenta utilizada por el MCP.
+
+No requiere parámetros.
+
+Cuando existe la opción «Ver más cuadernos recientes», el servidor la abre antes de recorrer las tarjetas. Los resultados se acumulan por identificador para evitar duplicados.
+
+Ejemplo:
+
+```json
+[
+  {
+    "nombre": "Bases",
+    "emoji": "📚",
+    "id": "12345678-1234-1234-1234-123456789abc",
+    "url": "https://notebook.google.com/notebook/12345678-1234-1234-1234-123456789abc"
+  }
+]
+```
+
+Si se reconoce la pantalla de cuenta sin cuadernos:
+
+```json
+[]
+```
+
+Una lista vacía es un resultado válido. Una sesión cerrada, un error de carga o una interfaz no reconocida no deben interpretarse como confirmación de que la cuenta está vacía.
+
+### `preguntar_notebooklm`
+
+Envía una pregunta a un cuaderno y devuelve una respuesta basada en sus fuentes.
+
+| Parámetro | Tipo | Obligatorio | Descripción |
+|---|---|---|---|
+| `pregunta` | string | Sí | Pregunta para NotebookLM. |
+| `notebookId` | string UUID | No | Identificador obtenido mediante `listar_cuadernos`. |
+| `notebookNombre` | string | No | Nombre completo o parte del nombre del cuaderno. |
+
+Selección del cuaderno:
+
+- Con `notebookId`, se consulta ese identificador.
+- Con `notebookNombre`, se busca el cuaderno por nombre.
+- No enviar `notebookId` y `notebookNombre` al mismo tiempo.
+- Si el nombre coincide con varios cuadernos, se devuelven opciones para elegir uno.
+- Si no se proporciona identificador ni nombre, se utiliza `NOTEBOOKLM_URL`.
+
+Para obtener respuestas basadas en documentos, el cuaderno debe tener fuentes disponibles.
+
+## Configuración
+
+### Microsoft Edge mediante CDP
+
+```dotenv
+NOTEBOOKLM_CONNECTION=cdp
+NOTEBOOKLM_BROWSER=msedge
+NOTEBOOKLM_CDP_URL=http://127.0.0.1:9222
+NOTEBOOKLM_CDP_WINDOW=headless
+```
+
+El inicio automático de Edge mediante CDP está implementado para Windows y utiliza el puerto local `9222`.
+
+### Visibilidad de Edge
+
+| Valor de `NOTEBOOKLM_CDP_WINDOW` | Comportamiento |
+|---|---|
+| `headless` | Ejecuta Edge sin ventana. Recomendado para consultas. |
+| `hidden` | Inicia Edge con ventana y luego la oculta; puede aparecer brevemente. |
+| `visible` | Mantiene la ventana visible para diagnóstico. |
+
+El comando de inicio de sesión fuerza temporalmente el modo visible.
+
+### Perfil personalizado
+
+Opcionalmente:
+
+```dotenv
+NOTEBOOKLM_CDP_PROFILE=C:\Users\TU_USUARIO\notebooklm-edge
+```
+
+El inicio de sesión y las consultas deben utilizar exactamente esa misma carpeta.
+
+Si se utiliza un perfil personalizado, adaptar también los comandos de preparación y recuperación que mencionan `playwright/profile-cdp`.
+
+No utilizar el perfil personal habitual de Edge.
+
+### Cuaderno predeterminado
+
+Opcionalmente:
+
+```dotenv
+NOTEBOOKLM_URL=https://notebook.google.com/notebook/ID_DEL_CUADERNO
+```
+
+No es necesario configurarlo para listar cuadernos ni para consultar mediante `notebookId` o `notebookNombre`.
+
+### Alternativa: Chromium mediante Playwright
+
+Configurar:
+
+```dotenv
+NOTEBOOKLM_CONNECTION=persistent
+NOTEBOOKLM_BROWSER=chromium
+```
+
+Instalar Chromium:
+
+```powershell
+npx.cmd playwright install chromium
+```
+
+Iniciar sesión:
+
+```powershell
+npm.cmd run login
+```
+
+La sesión se conserva en:
+
+```text
+playwright/profile
+```
+
+Este modo utiliza una ventana visible. `NOTEBOOKLM_CDP_WINDOW` corresponde al modo CDP y no controla esta alternativa.
+
+Durante las pruebas, Google bloqueó algunos intentos de inicio de sesión desde Chromium controlado por Playwright. Por eso se recomienda Edge mediante CDP en Windows.
+
+## Aplicar cambios y actualizar el proyecto
+
+### Después de modificar `.env` o el código
+
+Reiniciar el servidor MCP para que lea los cambios.
+
+- En Codex CLI: salir de la sesión y volver a ejecutar `codex.cmd`.
+- Si una aplicación mantiene el servidor activo: cerrarla completamente y volver a abrirla.
+
+No es necesario borrar chats, eliminar el proyecto ni reinstalar las dependencias.
+
+Después del reinicio, solicitar una nueva llamada a `listar_cuadernos`.
+
+### Actualizar desde GitHub
+
+Desde el repositorio:
+
+```powershell
+git pull --ff-only
+npm.cmd install
+npm.cmd run check
+```
+
+Si Git informa cambios locales que impiden actualizar, revisarlos antes de continuar.
+
+Después, reiniciar el cliente MCP.
+
+Actualizar el repositorio no actualiza automáticamente el archivo `.env`. Comparar las opciones nuevas de `.env.example` y agregarlas al archivo local cuando corresponda.
+
+### Si se mueve la carpeta del repositorio
+
+El registro del cliente utiliza rutas absolutas.
+
+Si la carpeta cambia de ubicación, actualizar el registro del servidor para que apunte a la nueva ruta.
+
+## Cambiar de cuenta de Google
+
+1. Cerrar el cliente MCP para evitar consultas mientras se cambia la sesión.
+2. Ejecutar desde el repositorio:
+
+   ```powershell
+   npm.cmd run login
+   ```
+
+3. En el Edge dedicado, abrir el menú de la cuenta de Google.
+4. Para evitar que el MCP vuelva a una cuenta anterior, cerrar las sesiones de Google de ese perfil e iniciar sesión únicamente con la cuenta deseada.
+5. Abrir directamente:
+
+   ```text
+   https://notebook.google.com/
+   ```
+
+6. Comprobar que esa dirección, sin parámetros `authuser`, muestra la cuenta correcta.
+7. Regresar a PowerShell y presionar Enter.
+8. Abrir el cliente y solicitar una nueva llamada a `listar_cuadernos`.
+
+Cambiar de cuenta en una sola pestaña o agregar una cuenta adicional no garantiza que esa cuenta quede seleccionada cuando el MCP abre la dirección principal.
+
+Este procedimiento afecta al perfil dedicado del MCP, no al perfil habitual del navegador.
+
+## Solución de problemas
+
+### PowerShell bloquea npm.ps1 o npx.ps1
+
+Utilizar:
+
+```powershell
+npm.cmd install
+npx.cmd playwright --version
+```
+
+Se puede aplicar la misma alternativa a los demás comandos de npm y npx.
+
+### Error al cambiar Edge entre visible y headless
+
+Se observó un fallo al esperar que terminara el proceso de Edge durante el cambio de modo.
+
+Si ocurre:
+
+1. Cerrar el cliente MCP.
+2. Desde la carpeta del repositorio, ejecutar este bloque para cerrar los procesos de Edge que utilizan el perfil dedicado predeterminado:
+
+   ```powershell
+   $perfil = Join-Path (Get-Location) "playwright\profile-cdp"
+
+   Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" |
+       Where-Object {
+           $_.CommandLine -and
+           $_.CommandLine.Contains($perfil)
+       } |
+       ForEach-Object {
+           Stop-Process -Id $_.ProcessId -ErrorAction SilentlyContinue
+       }
+   ```
+
+3. Volver a ejecutar:
+
+   ```powershell
+   npm.cmd run login
+   ```
+
+Si se utiliza `NOTEBOOKLM_CDP_PROFILE`, reemplazar `$perfil` por la ruta configurada.
+
+Este procedimiento es una recuperación para un problema conocido; el fallo de cambio de modo todavía requiere una corrección en el código.
+
+### El listado muestra cuadernos de otra cuenta
+
+Solicitar una nueva ejecución de la herramienta, sin reutilizar resultados anteriores.
+
+Si la herramienta devuelve nuevamente la cuenta anterior, seguir la sección «Cambiar de cuenta de Google».
+
+No es necesario crear un chat nuevo.
+
+### Timeout buscando tarjetas o botones
+
+Puede indicar:
+
+- Sesión de Google cerrada o vencida.
+- Carga incompleta de NotebookLM.
+- Una pantalla o idioma no contemplado.
+- Cambios en la interfaz web.
+- Una versión anterior del proyecto o un servidor que no se reinició.
+
+Actualizar el proyecto, reiniciar el servidor y comprobar la sesión.
+
+Para observar la página que utiliza el MCP, configurar temporalmente:
+
+```dotenv
+NOTEBOOKLM_CDP_WINDOW=visible
+```
+
+Reiniciar el cliente y repetir la consulta. Después del diagnóstico, restaurar `headless` y reiniciar nuevamente.
+
+No interpretar un timeout como una lista vacía.
+
+### La lista parece incompleta
+
+Comparar el resultado con la cuenta abierta en el Edge dedicado al MCP.
+
+La versión actual abre la lista ampliada cuando está disponible y recorre las tarjetas. Si siguen faltando cuadernos, registrar el error o la diferencia para revisar la navegación y los selectores.
+
+No es necesario modificar el código para indicar cuántos cuadernos tiene una cuenta.
+
+### El puerto 9222 está ocupado
+
+El servidor verifica el proceso y el perfil antes de reutilizar una conexión CDP.
+
+Si otro programa utiliza el puerto, identificarlo y cerrar o reconfigurar ese programa antes de continuar.
+
+No cerrar procesos desconocidos únicamente por utilizar ese puerto.
+
+## Seguridad
+
+- `.env`, cookies y perfiles de navegador son datos locales.
+- No compartir las carpetas `playwright/profile*`.
+- No subir sesiones de Google al repositorio.
+- Mantener CDP restringido a `127.0.0.1`.
+- No exponer el puerto `9222` a Internet ni a otras computadoras.
+- Utilizar el MCP en un equipo local de confianza.
+
+CDP permite controlar la sesión del navegador. La verificación del proceso y del perfil no sustituye la seguridad del equipo.
+
+## Comandos del proyecto
+
+| Comando | Uso |
+|---|---|
+| `npm.cmd install` | Instalar dependencias. |
+| `npm.cmd run login` | Abrir el flujo de inicio de sesión. |
+| `npm.cmd run check` | Verificar TypeScript sin generar archivos. |
+| `npm.cmd run mcp` | Iniciar el servidor STDIO manualmente para diagnóstico. |
+
+En terminales donde no exista el bloqueo de PowerShell, se puede utilizar `npm` en lugar de `npm.cmd`.
 
 ## Limitaciones actuales
 
-- Depende de la interfaz web de NotebookLM; cambios en sus elementos HTML pueden requerir ajustes en los selectores.
-- El inicio de sesión requiere una ventana visible. Las consultas con Microsoft Edge mediante CDP pueden ejecutarse sin ventana usando `NOTEBOOKLM_CDP_WINDOW=headless`. La alternativa Chromium mediante Playwright utiliza una ventana visible y Google puede bloquear su inicio de sesión.
-- Las operaciones deben ejecutarse secuencialmente cuando comparten el mismo perfil del navegador.
-- El listado depende de los cuadernos cargados en la página principal.
-- La compatibilidad con diferentes clientes MCP aún requiere pruebas individuales.
-- El inicio automático de Edge mediante CDP está implementado para Windows. En otros sistemas operativos, esta funcionalidad todavía no se ha probado ni implementado.
+- Depende de la interfaz web de NotebookLM y de sus selectores.
+- Algunos textos utilizados para reconocer controles y la cuenta vacía dependen del idioma de la interfaz.
+- El listado usa criterios de estabilidad de carga; no dispone de una confirmación oficial del total de cuadernos.
+- No se ha verificado el listado con todas las cantidades posibles de cuadernos ni con todas las variantes de paginación.
+- Las operaciones que comparten el mismo perfil deben ejecutarse secuencialmente.
+- El cambio entre modos de Edge presenta un problema conocido durante el cierre del proceso.
+- El inicio automático de Edge mediante CDP está implementado para Windows.
+- Otros sistemas operativos y clientes MCP requieren pruebas específicas.
+- Google puede bloquear el inicio de sesión desde navegadores automatizados.
+
+## Validación realizada
+
+Durante las pruebas del proyecto se comprobó:
+
+- Listado de 12 cuadernos mediante la apertura automática de la lista ampliada.
+- Listado con pocos cuadernos, sin exigir el botón de ampliación.
+- Cambio de cuenta de Google en el perfil dedicado.
+- Reconocimiento del estado vacío y devolución de `[]`.
+- Uso de consultas sin ventana con Edge mediante CDP.
+- Consultas a cuadernos mediante MCP.
+- Verificación del código con `tsc --noEmit`.
+
+Estas pruebas describen los escenarios comprobados y no garantizan compatibilidad con futuras modificaciones de NotebookLM.
 
 ## Tecnologías
 
-- TypeScript
-- Node.js
-- Playwright
-- Cheerio
-- Model Context Protocol SDK
-- Zod
+- TypeScript.
+- Node.js.
+- Playwright.
+- Cheerio.
+- Model Context Protocol SDK.
+- Zod.
 
 ## Estado del proyecto
 
-En desarrollo. Las herramientas `listar_cuadernos` y `preguntar_notebooklm` se han probado correctamente mediante MCP Inspector y Codex CLI en Windows.
+En desarrollo.
 
-También se ha verificado el funcionamiento de ambas herramientas desde MCP Inspector utilizando Microsoft Edge mediante CDP y una sesión de Google iniciada previamente por el usuario.
+Integración probada principalmente en Windows con Microsoft Edge mediante CDP, Codex CLI y MCP Inspector.
