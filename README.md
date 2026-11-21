@@ -557,3 +557,25 @@ Estas pruebas describen los escenarios comprobados y no garantizan compatibilida
 En desarrollo.
 
 Integración probada principalmente en Windows con Microsoft Edge mediante CDP, Codex CLI y MCP Inspector.
+
+## Aviso de independencia y uso
+
+Este es un proyecto independiente y no oficial. No está afiliado,
+patrocinado ni aprobado por Google. Los nombres y marcas mencionados
+pertenecen a sus respectivos titulares.
+
+La herramienta automatiza interacciones con la interfaz web de
+NotebookLM. Su funcionamiento puede verse afectado por cambios en
+esa interfaz, restricciones del servicio o cambios en sus condiciones.
+
+Utilizá únicamente cuentas y contenido para los que tengas autorización.
+El uso debe respetar las condiciones aplicables de Google y los derechos
+de privacidad y propiedad intelectual de terceros.
+
+La sesión del navegador se almacena en el equipo donde se ejecuta la
+herramienta. Las consultas se envían a Google y los resultados se
+entregan al cliente MCP configurado. Revisá también las políticas de
+privacidad de los servicios y del cliente que utilicés.
+
+No publiques credenciales, cookies, perfiles del navegador ni contenido
+privado al solicitar soporte.
