@@ -11,7 +11,7 @@ Cada persona utiliza su propia cuenta de Google y sus propios cuadernos.
 El siguiente video muestra cómo un asistente de IA utiliza
 NotebookLM MCP para listar cuadernos y consultar su contenido.
 
-[▶ Ver demostración del MCP](docs/demo.gif)
+[Ver demostración del MCP](docs/demo.gif)
 
 ## Características
 
