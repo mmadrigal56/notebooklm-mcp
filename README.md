@@ -6,6 +6,13 @@ Utiliza Playwright para interactuar con la interfaz web de NotebookLM. La config
 
 Cada persona utiliza su propia cuenta de Google y sus propios cuadernos.
 
+## Demostración
+
+El siguiente video muestra cómo un asistente de IA utiliza
+NotebookLM MCP para listar cuadernos y consultar su contenido.
+
+[▶ Ver demostración del MCP](docs/demo.gif)
+
 ## Características
 
 - Listado de cuadernos con nombre, emoji, identificador y enlace.
