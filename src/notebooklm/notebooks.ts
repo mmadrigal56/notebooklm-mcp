@@ -16,6 +16,27 @@ export async function listarCuadernos(
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("https://notebook.google.com/");
 
+  const estadoVacio = page.getByText(
+    "Probar un cuaderno de ejemplo",
+    { exact: true }
+  );
+
+  // Esperar tarjetas o el mensaje específico de cuenta vacía.
+  await page.locator(TARJETAS).first()
+    .or(estadoVacio)
+    .first()
+    .waitFor({
+      state: "visible",
+      timeout: 30000,
+    });
+
+  if (
+    await estadoVacio.isVisible() &&
+    await page.locator(TARJETAS).count() === 0
+  ) {
+    return [];
+  }
+
   const cuadricula = page.getByRole("button", {
     name: /^(Vista de cuadrícula|Grid view)$/i,
   });
