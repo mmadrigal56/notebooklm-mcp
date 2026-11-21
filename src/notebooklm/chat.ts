@@ -38,8 +38,6 @@ export async function enviarPregunta(
 
   const textoEscrito = await cuadroConsulta.inputValue();
 
-  console.error("Texto escrito:", textoEscrito);
-
   if (textoEscrito !== pregunta) {
     throw new Error(
       "El texto del cuadro no coincide con la pregunta nueva."
@@ -56,12 +54,9 @@ export async function enviarPregunta(
     timeout: 15000,
   });
 
-  // Confirmar que el cuadro se vació.
   await page.waitForTimeout(1000);
 
   const textoRestante = await cuadroConsulta.inputValue();
-
-  console.error("Texto restante:", textoRestante);
 
   if (textoRestante.trim() !== "") {
     throw new Error(
